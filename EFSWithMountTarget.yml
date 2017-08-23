@@ -83,7 +83,7 @@ Outputs:
     Description: Subnet in which mount target B was created
     Value: !Ref 'SubnetIdB'
     Export:
-      Name: !Sub '${AWS::StackName}-SubnetIdA'  
+      Name: !Sub '${AWS::StackName}-SubnetIdB'  
   SubnetIdC:
     Description: Subnet in which mount target C was created
     Value: !Ref 'SubnetIdC'
