@@ -336,23 +336,22 @@ Resources:
         get_configuration:
           commands:
             01_get_config:
-              command: !Sub
-                - |
-                  #!/bin/bash
-                  set -e
-                  
-                  instance_id=$(curl http://169.254.169.254/latest/meta-data/instance-id)
-                  tags=$(aws ec2 describe-tags --filters "Name=resource-id,Values=${instance_id}")
-                  
-                  EIP=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "EIP") | .Value')
-                  EIP_ALLOCATION_ID=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "EIPAllocationId") | .Value')
-                  SEED_IP=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "SeedIp") | .Value')
-                  NODE_ID=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "NodeId") | .Value')
-                  
-                  echo "EIP=$EIP" >> /etc/cassandra-info
-                  echo "EIP_ALLOCATION_ID=$EIP_ALLOCATION_ID" >> /etc/cassandra-info
-                  echo "SEED_IP=$SEED_IP" >> /etc/cassandra-info
-                  echo "NODE_ID=$NODE_ID" >> /etc/cassandra-info
+              command: !Sub |
+                #!/bin/bash
+                set -e
+                
+                instance_id=$(curl http://169.254.169.254/latest/meta-data/instance-id)
+                tags=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$instance_id")
+                
+                EIP=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "EIP") | .Value')
+                EIP_ALLOCATION_ID=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "EIPAllocationId") | .Value')
+                SEED_IP=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "SeedIp") | .Value')
+                NODE_ID=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "NodeId") | .Value')
+                
+                echo "EIP=$EIP" >> /etc/cassandra-info
+                echo "EIP_ALLOCATION_ID=$EIP_ALLOCATION_ID" >> /etc/cassandra-info
+                echo "SEED_IP=$SEED_IP" >> /etc/cassandra-info
+                echo "NODE_ID=$NODE_ID" >> /etc/cassandra-info
   InstanceAsgA:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
