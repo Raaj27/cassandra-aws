@@ -4,9 +4,16 @@ Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC in which to create stack
-  SubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: 2 Subnets in which to create mount targets (must be in distinct AZs)
+  SubnetIdA:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet in which to create mount target (must be in distinct AZ from other subnets supplied)
+  SubnetIdB:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet in which to create mount target (must be in distinct AZ from other subnets supplied)
+  SubnetIdC:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet in which to create mount target (must be in distinct AZ from other subnets supplied)
+    
 Resources:
   FileSystem:
     Type: AWS::EFS::FileSystem
@@ -33,16 +40,23 @@ Resources:
     Type: AWS::EFS::MountTarget
     Properties:
       FileSystemId: !Ref 'FileSystem'
-      SubnetId: !Select ['0', !Ref 'SubnetIds']
+      SubnetId: !Ref 'SubnetIdA'
       SecurityGroups:
       - !Ref 'MountTargetSecurityGroup'
   MountTargetB:
     Type: AWS::EFS::MountTarget
     Properties:
       FileSystemId: !Ref 'FileSystem'
-      SubnetId: !Select ['1', !Ref 'SubnetIds']
+      SubnetId: !Ref 'SubnetIdB'
       SecurityGroups:
       - !Ref 'MountTargetSecurityGroup'
+  MountTargetC:
+      Type: AWS::EFS::MountTarget
+      Properties:
+        FileSystemId: !Ref 'FileSystem'
+        SubnetId: !Ref 'SubnetIdC'
+        SecurityGroups:
+        - !Ref 'MountTargetSecurityGroup'
 Outputs:
   VpcId:
     Description: VPC ID
@@ -60,3 +74,18 @@ Outputs:
     Value: !GetAtt [FileSystemAccessSecurityGroup, GroupId]
     Export:
       Name: !Sub '${AWS::StackName}-FSAccessSecurityGroupID'
+  SubnetIdA:
+    Description: Subnet in which mount target A was created
+    Value: !Ref 'SubnetIdA'
+    Export:
+      Name: !Sub '${AWS::StackName}-SubnetIdA'  
+  SubnetIdB:
+    Description: Subnet in which mount target B was created
+    Value: !Ref 'SubnetIdB'
+    Export:
+      Name: !Sub '${AWS::StackName}-SubnetIdA'  
+  SubnetIdC:
+    Description: Subnet in which mount target C was created
+    Value: !Ref 'SubnetIdC'
+    Export:
+      Name: !Sub '${AWS::StackName}-SubnetIdC'  
