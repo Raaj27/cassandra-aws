@@ -144,7 +144,7 @@ Resources:
     Properties:
       Domain: vpc
 
-  EcsInstanceLc:
+  InstanceLc:
     Type: AWS::AutoScaling::LaunchConfiguration
     DependsOn: LogGroup
     Properties:
@@ -166,9 +166,9 @@ Resources:
           #!/bin/bash
           yum install -y aws-cfn-bootstrap awslogs jq
           export AWS_DEFAULT_REGION=$(curl http://169.254.169.254/latest/meta-data/placement/availability-zone | sed s'/.$//')
-          /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource EcsInstanceLc --configsets full_install
+          /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource InstanceLc --configsets full_install
           source /etc/cassandra-info
-          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource "EcsInstanceAsg$NODE_ID"
+          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource "InstanceAsg$NODE_ID"
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
@@ -193,8 +193,8 @@ Resources:
               content: !Sub |
                 [cfn-auto-reloader-hook]
                 triggers=post.update
-                path=Resources.EcsInstanceLc.Metadata.AWS::CloudFormation::Init
-                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EcsInstanceLc --configsets full_install
+                path=Resources.InstanceLc.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource InstanceLc --configsets full_install
                 runas=root
           services:
             sysvinit:
@@ -399,7 +399,7 @@ Resources:
       VPCZoneIdentifier: 
         - !ImportValue
           'Fn::Sub': '${EfsStackName}-SubnetIdA'  
-      LaunchConfigurationName: !Ref 'EcsInstanceLc'
+      LaunchConfigurationName: !Ref 'InstanceLc'
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1      
@@ -429,7 +429,7 @@ Resources:
       VPCZoneIdentifier: 
         - !ImportValue
           'Fn::Sub': '${EfsStackName}-SubnetIdB'  
-      LaunchConfigurationName: !Ref 'EcsInstanceLc'
+      LaunchConfigurationName: !Ref 'InstanceLc'
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1      
@@ -459,7 +459,7 @@ Resources:
       VPCZoneIdentifier: 
         - !ImportValue
           'Fn::Sub': '${EfsStackName}-SubnetIdC'  
-      LaunchConfigurationName: !Ref 'EcsInstanceLc'
+      LaunchConfigurationName: !Ref 'InstanceLc'
       MinSize: 1
       MaxSize: 1
       DesiredCapacity: 1      
