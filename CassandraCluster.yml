@@ -22,6 +22,9 @@ Parameters:
     Type: String
     Description: The path at which to create the volume mount for EFS
     Default: /mnt/efs
+  CassandraConfigS3Bucket:
+    Type: String
+    Description: The S3 bucket which contains cassandra configuration files
   LogRetention:
     Type: Number
     Description: Number of days to retain logs for cassandra nodes
@@ -123,6 +126,19 @@ Resources:
             - ec2:AssociateAddress
             - ec2:DisassociateAddress
             Resource: '*'
+      - PolicyName: S3-Operations
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${CassandraConfigS3Bucket}/*'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:ListBucket
+            Resource: !Sub 'arn:aws:s3:::${CassandraConfigS3Bucket}'
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -288,13 +304,15 @@ Resources:
                 end script
         configure_docker:
           commands:
-            01_docker_user:
+            01_docker_users:
               command: !Sub |
                 #!/bin/bash
                 
                 # Create a docker user that has access to specific things on the host instead of running as root
                 DOCKER_USER_ID=5001
                 useradd -u $DOCKER_USER_ID -o -c "" docker-user
+                CASSANDRA_USER_ID=999
+                useradd -u $CASSANDRA_USER_ID -o -c "" cassandra
         install_efs:
           commands:
             01_install_efs:
@@ -333,17 +351,13 @@ Resources:
                   # Create the EFS group and assign it as the group for the entire EFS volume
                   EFS_GID=555
                   groupadd -g $EFS_GID efs
-                  chgrp -R efs $DIR_TGT
                   
-                  if [ ! -d "$DIR_TGT/docker-user" ]; then
-                    echo "Creating docker-user dir on EFS" >> $LOG_FILE
-                    mkdir "$DIR_TGT/docker-user"
-                    chown -R docker-user:efs "$DIR_TGT/docker-user"
+                  if [ ! -d "$DIR_TGT/cassandra" ]; then
+                    echo "Creating cassandra dir on EFS" >> $LOG_FILE
+                    mkdir "$DIR_TGT/cassandra"
+                    chown -R cassandra:cassandra "$DIR_TGT/cassandra"
                   fi
                   
-                  # Create cassandra folder (TODO: make this path configurable)
-                  mkdir -p $DIR_TGT/docker-user/cassandra
-                                    
                 - FileSystemId: !ImportValue
                     'Fn::Sub': '${EfsStackName}-FileSystemId'
                   MountPath: !Ref 'EfsMountPath'
@@ -379,20 +393,40 @@ Resources:
                 echo "Associate EIP: $EIP" >> /var/log/setup.log
                 aws ec2 associate-address --allocation-id $EIP_ALLOCATION_ID --instance-id $INSTANCE_ID --allow-reassociation >> /var/log/setup.log
         configure_cassandra:
+          files:
+            "/opt/cassandra-setup":
+              mode: '000755'
+              owner: root
+              group: root
+              content: !Sub |
+                #!/bin/bash
+                set -e
+                
+                # system optimizations
+                sysctl -w vm.max_map_count=262144
+                
+                source /etc/cassandra-info
+                mount_path=${EfsMountPath}
+                
+                # retrieve cassandra config files
+                mkdir -p /etc/cassandra
+                aws s3 copy s3://${CassandraConfigS3Bucket}/cassandra.yaml /etc/cassandra/cassandra.yaml
+                chown -R cassandra:cassandra /etc/cassandra
+                chmod -R 644 /etc/cassandra
+                
+                # launch cassandra
+                docker run -d --privileged --name cassandra --restart always --network=host -u $(id -u cassandra) \
+                --log-driver=awslogs --log-opt awslogs-region="${AWS::Region}" --log-opt awslogs-group="${LogGroup}" --log-opt awslogs-stream="node$NODE_ID" \
+                -e CASSANDRA_SEEDS="$SEED_IP" \
+                -e CASSANDRA_BROADCAST_ADDRESS="$EIP" \
+                -v $mount_path/cassandra/node$NODE_ID:/var/lib/cassandra \
+                -v /etc/cassandra/cassandra.yaml:/etc/cassandra/cassandra.yaml cassandra:3.11 >> /var/log/docker                    
           commands:
             01_configure_cassandra:
               command: !Sub |
                 #!/bin/bash
-                set -e
                 
-                source /etc/cassandra-info
-                mount_path=${EfsMountPath}
-                docker run -d --name cassandra --restart always --network=host -u $(id -u docker-user) \
-                --log-driver=awslogs --log-opt awslogs-region="${AWS::Region}" --log-opt awslogs-group="${LogGroup}" --log-opt awslogs-stream="node$NODE_ID" \
-                -e CASSANDRA_SEEDS="$SEED_IP" \
-                -e CASSANDRA_BROADCAST_ADDRESS="$EIP" \
-                -v $mount_path/docker-user/cassandra/node$NODE_ID:/var/lib/cassandra cassandra:3.11 >> /var/log/docker
-                                                                                                                                                            
+                /opt/cassandra-setup                                                                                                                  
   InstanceAsgA:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -420,9 +454,9 @@ Resources:
         Value: 'A'
         PropagateAtLaunch: 'true'
     CreationPolicy:
-        # Ensure we wait for a signal from each instance to know when its done bootstrapping
-        ResourceSignal:
-            Timeout: PT15M
+      # Ensure we wait for a signal from each instance to know when its done bootstrapping
+      ResourceSignal:
+        Timeout: PT15M
   InstanceAsgB:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
