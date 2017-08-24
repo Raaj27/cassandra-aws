@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: |
+  An S3 Bucket that holds Cassandra configuration and files needed for secure node-to-node and client-to-node encryption
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: "cassandra-configuration"
+
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
+
+  SecureBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Metadata:
+      Comment: Implements the policy described at http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html
+    Properties:
+      Bucket: !Ref "S3Bucket"
+      PolicyDocument:
+        Statement:
+          - Sid: DenyUnencryptedObjectUploads
+            Effect: Deny
+            Principal: "*"
+            Action: s3:PutObject
+            Resource: !Sub 'arn:aws:s3:::${S3Bucket}/*'
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: "AES256"
+
+Outputs:
+  BucketName:
+    Description: The S3 bucket that holds Cassandra configuration and certificates
+    Value: !Ref 'S3Bucket'
+    Export:
+      Name: !Sub '${AWS::StackName}-CassandraBucket'
