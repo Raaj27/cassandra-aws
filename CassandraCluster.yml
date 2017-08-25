@@ -525,7 +525,7 @@ Resources:
                 #!/bin/bash
                 
                 /opt/cassandra-setup                                                                                                                  
-  InstanceAsgA:
+  InstanceAsga:
     DependsOn: RecordA
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -556,7 +556,7 @@ Resources:
       # Ensure we wait for a signal from each instance to know when its done bootstrapping
       ResourceSignal:
         Timeout: PT15M
-  InstanceAsgB:
+  InstanceAsgb:
     DependsOn: RecordB
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -587,7 +587,7 @@ Resources:
         # Ensure we wait for a signal from each instance to know when its done bootstrapping
         ResourceSignal:
             Timeout: PT15M
-  InstanceAsgC:
+  InstanceAsgc:
     DependsOn: RecordC
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
