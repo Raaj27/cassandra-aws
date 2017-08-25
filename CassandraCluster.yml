@@ -22,6 +22,12 @@ Parameters:
     Type: String
     Description: The path at which to create the volume mount for EFS
     Default: /mnt/efs
+  HostedZoneName:
+    Type: String
+    Description: The domain of the hosted zone ending with a period
+  HostedZoneId:
+    Type: String
+    Description: The id of the hosted zone in which node records will be created
   CassandraConfigS3Bucket:
     Type: String
     Description: The S3 bucket which contains cassandra configuration files
@@ -142,7 +148,24 @@ Resources:
             Action:
             - s3:ListBucket
             Resource: !Sub 'arn:aws:s3:::${CassandraConfigS3Bucket}'
-
+      - PolicyName: Route53-Operations
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:  
+          - Effect: Allow
+            Action:
+            - route53:ChangeResourceRecordSets
+            - route53:GetHostedZone
+            - route53:ListResourceRecordSets
+            Resource: !Sub 'arn:aws:route53:::hostedzone/${HostedZoneId}'
+          - Effect: Allow
+            Action:
+            - route53:ListHostedZones
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - route53:GetChange
+            Resource: 'arn:aws:route53:::change/*'
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -163,6 +186,33 @@ Resources:
     Properties:
       Domain: vpc
 
+  RecordA:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      HostedZoneName: !Ref 'HostedZoneName'
+      Name: !Sub 'nodea.cassandra.${HostedZoneName}'
+      Type: A
+      TTL: '60'
+      ResourceRecords:
+      - '127.0.0.1'
+  RecordB:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      HostedZoneName: !Ref 'HostedZoneName'
+      Name: !Sub 'nodeb.cassandra.${HostedZoneName}'
+      Type: A
+      TTL: '60'
+      ResourceRecords:
+      - '127.0.0.1'       
+  RecordC:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      HostedZoneName: !Ref 'HostedZoneName'
+      Name: !Sub 'nodec.cassandra.${HostedZoneName}'
+      Type: A
+      TTL: '60'
+      ResourceRecords:
+      - '127.0.0.1'       
   InstanceLc:
     Type: AWS::AutoScaling::LaunchConfiguration
     DependsOn: LogGroup
@@ -367,6 +417,21 @@ Resources:
             02_restart_docker:
               command: service docker restart
         configure_instance:
+          files:
+            "/opt/change-record-set-request.json":
+              mode: '000644'
+              owner: root
+              group: root
+              content: |
+                {
+                  "Comment": "Changing IP address",
+                  "Changes": [
+                    {
+                      "Action": "UPSERT",
+                      "ResourceRecordSet": {}
+                    }
+                  ]
+                }        
           commands:
             01_get_config:
               command: !Sub |
@@ -386,6 +451,8 @@ Resources:
                 echo "SEED_IP=$SEED_IP" >> /etc/cassandra-info
                 echo "NODE_ID=$NODE_ID" >> /etc/cassandra-info
                 echo "INSTANCE_ID=$instance_id" >> /etc/cassandra-info
+                echo "HOSTED_ZONE_ID=${HostedZoneId}" >> /etc/cassandra-info
+                echo "NODE_ADDRESS=node$NODE_ID.cassandra.${HostedZoneName}" >> /etc/cassandra-info
             02_associate_eip:
               command: !Sub |
                 #!/bin/bash
@@ -395,6 +462,26 @@ Resources:
                 
                 echo "Associate EIP: $EIP" >> /var/log/setup.log
                 aws ec2 associate-address --allocation-id $EIP_ALLOCATION_ID --instance-id $INSTANCE_ID --allow-reassociation >> /var/log/setup.log
+            03_change_records:
+              command: !Sub |
+                #!/bin/bash
+                
+                source /etc/cassandra-info
+                
+                private_ip=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+                
+                record=$(aws route53 list-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --query "ResourceRecordSets[?Name=='$NODE_ADDRESS']" | jq '.[0]')
+                newrecord=$(echo $record | jq ".ResourceRecords[0].Value = \"$private_ip\"")
+                
+                echo "Updating recordset to $private_ip" >> /var/log/setup.log
+                cat /opt/change-record-set-request.json | jq ".Changes[0].ResourceRecordSet = $newrecord" > /opt/record.json
+                result=$(aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file:///opt/record.json)
+                
+                echo "Waiting for recordset update" >> /var/log/setup.log
+                changeid=$(echo $result | jq '.ChangeInfo.Id' --raw-output)
+                aws route53 wait resource-record-sets-changed --id "$changeid"
+                
+                echo "Recordset update completed" >> /var/log/setup.log
         configure_cassandra:
           files:
             "/opt/cassandra-setup":
@@ -429,7 +516,7 @@ Resources:
                 docker run -d --privileged --name cassandra --restart always --network=host -u $(id -u cassandra) \
                 --log-driver=awslogs --log-opt awslogs-region="${AWS::Region}" --log-opt awslogs-group="dev-cassandra-test" --log-opt awslogs-stream="node$NODE_ID" \
                 -e CASSANDRA_SEEDS="$SEED_IP" \
-                -e CASSANDRA_BROADCAST_ADDRESS="$EIP" \
+                -e CASSANDRA_BROADCAST_ADDRESS="$NODE_ADDRESS" \
                 -v $mount_path/cassandra/node$NODE_ID:/var/lib/cassandra \
                 -v /etc/cassandra:/etc/cassandra cassandra:3.11 >> /var/log/docker                    
           commands:
@@ -439,6 +526,7 @@ Resources:
                 
                 /opt/cassandra-setup                                                                                                                  
   InstanceAsgA:
+    DependsOn: RecordA
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier: 
@@ -453,7 +541,7 @@ Resources:
         Value: !Sub 'Cassandra Cluster Instance - ${AWS::StackName}'
         PropagateAtLaunch: 'true'
       - Key: SeedIp
-        Value: !Ref 'EIPA'
+        Value: !Ref 'RecordA'
         PropagateAtLaunch: 'true'
       - Key: EIP
         Value: !Ref 'EIPA'
@@ -462,13 +550,14 @@ Resources:
         Value: !GetAtt EIPA.AllocationId
         PropagateAtLaunch: 'true'
       - Key: NodeId
-        Value: 'A'
+        Value: 'a'
         PropagateAtLaunch: 'true'
     CreationPolicy:
       # Ensure we wait for a signal from each instance to know when its done bootstrapping
       ResourceSignal:
         Timeout: PT15M
   InstanceAsgB:
+    DependsOn: RecordB
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier: 
@@ -483,7 +572,7 @@ Resources:
         Value: !Sub 'Cassandra Cluster Instance - ${AWS::StackName}'
         PropagateAtLaunch: 'true'
       - Key: SeedIp
-        Value: !Ref 'EIPA'
+        Value: !Ref 'RecordA'
         PropagateAtLaunch: 'true'
       - Key: EIP
         Value: !Ref 'EIPB'
@@ -492,13 +581,14 @@ Resources:
         Value: !GetAtt EIPB.AllocationId
         PropagateAtLaunch: 'true'
       - Key: NodeId
-        Value: 'B'
+        Value: 'b'
         PropagateAtLaunch: 'true'
     CreationPolicy:
         # Ensure we wait for a signal from each instance to know when its done bootstrapping
         ResourceSignal:
             Timeout: PT15M
   InstanceAsgC:
+    DependsOn: RecordC
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier: 
@@ -513,7 +603,7 @@ Resources:
         Value: !Sub 'Cassandra Cluster Instance - ${AWS::StackName}'
         PropagateAtLaunch: 'true'
       - Key: SeedIp
-        Value: !Ref 'EIPA'
+        Value: !Ref 'RecordA'
         PropagateAtLaunch: 'true'
       - Key: EIP
         Value: !Ref 'EIPC'
@@ -522,7 +612,7 @@ Resources:
         Value: !GetAtt EIPC.AllocationId
         PropagateAtLaunch: 'true'
       - Key: NodeId
-        Value: 'C'
+        Value: 'c'
         PropagateAtLaunch: 'true'
     CreationPolicy:
         # Ensure we wait for a signal from each instance to know when its done bootstrapping
