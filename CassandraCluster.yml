@@ -83,6 +83,10 @@ Resources:
         ToPort: '7199' 
         CidrIp: '10.0.0.0/16'
       - IpProtocol: tcp
+        FromPort: '9160'
+        ToPort: '9160' 
+        CidrIp: '10.0.0.0/16'
+      - IpProtocol: tcp
         FromPort: '22'
         ToPort: '22'
         CidrIp: '10.0.0.0/16'
@@ -129,12 +133,11 @@ Resources:
       - PolicyName: S3-Operations
         PolicyDocument:
           Version: '2012-10-17'
-          Statement:
+          Statement:  
           - Effect: Allow
             Action:
             - s3:GetObject
             Resource: !Sub 'arn:aws:s3:::${CassandraConfigS3Bucket}/*'
-          Statement:
           - Effect: Allow
             Action:
             - s3:ListBucket
@@ -403,24 +406,32 @@ Resources:
                 set -e
                 
                 # system optimizations
-                sysctl -w vm.max_map_count=262144
+                sysctl -w vm.max_map_count=1048575
                 
                 source /etc/cassandra-info
-                mount_path=${EfsMountPath}
+                mount_path=/mnt/efs
+                node_folder=$mount_path/cassandra/node$NODE_ID
                 
                 # retrieve cassandra config files
                 mkdir -p /etc/cassandra
-                aws s3 copy s3://${CassandraConfigS3Bucket}/cassandra.yaml /etc/cassandra/cassandra.yaml
+                chmod 755 /etc/cassandra
+                aws s3 sync s3://cassandra-configuration/ /etc/cassandra
                 chown -R cassandra:cassandra /etc/cassandra
-                chmod -R 644 /etc/cassandra
+                chmod -R 644 /etc/cassandra/*
+                
+                # create cassandra node data folder if it doesn't exist
+                if [ ! -d "$node_folder" ]; then
+                 mkdir -p $node_folder
+                 chown cassandra:cassandra $node_folder
+                fi
                 
                 # launch cassandra
                 docker run -d --privileged --name cassandra --restart always --network=host -u $(id -u cassandra) \
-                --log-driver=awslogs --log-opt awslogs-region="${AWS::Region}" --log-opt awslogs-group="${LogGroup}" --log-opt awslogs-stream="node$NODE_ID" \
+                --log-driver=awslogs --log-opt awslogs-region="${AWS::Region}" --log-opt awslogs-group="dev-cassandra-test" --log-opt awslogs-stream="node$NODE_ID" \
                 -e CASSANDRA_SEEDS="$SEED_IP" \
                 -e CASSANDRA_BROADCAST_ADDRESS="$EIP" \
                 -v $mount_path/cassandra/node$NODE_ID:/var/lib/cassandra \
-                -v /etc/cassandra/cassandra.yaml:/etc/cassandra/cassandra.yaml cassandra:3.11 >> /var/log/docker                    
+                -v /etc/cassandra:/etc/cassandra cassandra:3.11 >> /var/log/docker                    
           commands:
             01_configure_cassandra:
               command: !Sub |
