@@ -497,7 +497,14 @@ Resources:
                 
                 source /etc/cassandra-info
                 mount_path=/mnt/efs
-                node_folder=$mount_path/cassandra/node$NODE_ID
+                cassandra_folder=$mount_path/cassandra/${AWS::StackName}
+                
+                if [ ! -d "$cassandra_folder" ]; then
+                  mkdir -p $cassandra_folder
+                  chown -R cassandra:cassandra $cassandra_folder
+                fi
+                
+                node_folder=$cassandra_folder/node$NODE_ID
                 
                 # retrieve cassandra config files
                 mkdir -p /etc/cassandra
@@ -507,6 +514,7 @@ Resources:
                 chmod -R 644 /etc/cassandra/*
                 
                 if [ -d "/etc/cassandra/conf/certs" ]; then
+                  chmod 744 /etc/cassandra/conf
                   chmod -R 744 /etc/cassandra/conf/certs
                 fi
                 
@@ -521,7 +529,7 @@ Resources:
                 --log-driver=awslogs --log-opt awslogs-region="${AWS::Region}" --log-opt awslogs-group="${LogGroup}" --log-opt awslogs-stream="node$NODE_ID" \
                 -e CASSANDRA_SEEDS="$SEED_IP" \
                 -e CASSANDRA_BROADCAST_ADDRESS="$NODE_ADDRESS" \
-                -v $mount_path/cassandra/node$NODE_ID:/var/lib/cassandra \
+                -v $node_folder:/var/lib/cassandra \
                 -v /etc/cassandra:/etc/cassandra cassandra:3.11 >> /var/log/docker                    
           commands:
             01_configure_cassandra:
