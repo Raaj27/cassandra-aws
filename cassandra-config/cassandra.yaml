@@ -507,7 +507,7 @@ memtable_allocation_type: heap_buffers
 # The default value is the smaller of 8192, and 1/4 of the total space
 # of the commitlog volume.
 #
-# commitlog_total_space_in_mb: 8192
+commitlog_total_space_in_mb: 8192
 
 # This sets the number of memtable flush writer threads per disk
 # as well as the total number of memtables that can be flushed concurrently.
@@ -546,7 +546,7 @@ memtable_allocation_type: heap_buffers
 #
 # The default value is the min of 4096 mb and 1/8th of the total space
 # of the drive where cdc_raw_directory resides.
-# cdc_total_space_in_mb: 4096
+cdc_total_space_in_mb: 4096
 
 # When we hit our cdc_raw limit and the CDCCompactor is either running behind
 # or experiencing backpressure, we check at the following interval to see if any
@@ -1031,9 +1031,9 @@ request_scheduler: org.apache.cassandra.scheduler.NoScheduler
 server_encryption_options:
     internode_encryption: all
     keystore: conf/certs/cassandra.keystore
-    keystore_password: cassandra
+    keystore_password: cassandra1
     truststore: conf/certs/cassandra.truststore
-    truststore_password: cassandra
+    truststore_password: cassandra1
     # More advanced defaults below:
     protocol: TLS
     # algorithm: SunX509
@@ -1048,11 +1048,11 @@ client_encryption_options:
     # If enabled and optional is set to true encrypted and unencrypted connections are handled.
     optional: false
     keystore: conf/certs/cassandra.keystore
-    keystore_password: cassandra
+    keystore_password: cassandra1
     require_client_auth: true
     # Set trustore and truststore_password if require_client_auth is true
     truststore: conf/certs/cassandra.truststore
-    truststore_password: cassandra
+    truststore_password: cassandra1
     # More advanced defaults below:
     protocol: TLS
     # algorithm: SunX509
@@ -1130,7 +1130,7 @@ transparent_data_encryption_options:
       - class_name: org.apache.cassandra.security.JKSKeyProvider
         parameters:
           - keystore: conf/.keystore
-            keystore_password: cassandra
+            keystore_password: cassandra1
             store_type: JCEKS
             key_password: cassandra
 
