@@ -43,6 +43,7 @@ num_tokens: 256
 
 # See http://wiki.apache.org/cassandra/HintedHandoff
 # May either be "true" or "false" to enable globally
+# May either be "true" or "false" to enable globally
 hinted_handoff_enabled: true
 
 # When hinted_handoff_enabled is true, a black list of data centers that will not
@@ -1028,13 +1029,13 @@ request_scheduler: org.apache.cassandra.scheduler.NoScheduler
 # http://download.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
 #
 server_encryption_options:
-    internode_encryption: none
-    keystore: conf/.keystore
+    internode_encryption: all
+    keystore: conf/certs/cassandra.keystore
     keystore_password: cassandra
-    truststore: conf/.truststore
+    truststore: conf/certs/cassandra.truststore
     truststore_password: cassandra
     # More advanced defaults below:
-    # protocol: TLS
+    protocol: TLS
     # algorithm: SunX509
     # store_type: JKS
     # cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA]
@@ -1043,17 +1044,17 @@ server_encryption_options:
 
 # enable or disable client/server encryption.
 client_encryption_options:
-    enabled: false
+    enabled: true
     # If enabled and optional is set to true encrypted and unencrypted connections are handled.
     optional: false
-    keystore: conf/.keystore
+    keystore: conf/certs/cassandra.keystore
     keystore_password: cassandra
-    # require_client_auth: false
+    require_client_auth: true
     # Set trustore and truststore_password if require_client_auth is true
-    # truststore: conf/.truststore
-    # truststore_password: cassandra
+    truststore: conf/certs/cassandra.truststore
+    truststore_password: cassandra
     # More advanced defaults below:
-    # protocol: TLS
+    protocol: TLS
     # algorithm: SunX509
     # store_type: JKS
     # cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA]
@@ -1125,9 +1126,9 @@ transparent_data_encryption_options:
     key_alias: testing:1
     # CBC IV length for AES needs to be 16 bytes (which is also the default size)
     # iv_length: 16
-    key_provider: 
+    key_provider:
       - class_name: org.apache.cassandra.security.JKSKeyProvider
-        parameters: 
+        parameters:
           - keystore: conf/.keystore
             keystore_password: cassandra
             store_type: JCEKS
