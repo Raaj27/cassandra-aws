@@ -14,3 +14,7 @@
 
 # mpeltonen/sbt-idea plugin
 .idea_modules/
+
+cassandra-config/conf/certs
+
+*.pem
