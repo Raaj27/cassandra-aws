@@ -506,6 +506,10 @@ Resources:
                 chown -R cassandra:cassandra /etc/cassandra
                 chmod -R 644 /etc/cassandra/*
                 
+                if [ -d "/etc/cassandra/conf/certs" ]; then
+                  chmod -R 744 /etc/cassandra/conf/certs
+                fi
+                
                 # create cassandra node data folder if it doesn't exist
                 if [ ! -d "$node_folder" ]; then
                  mkdir -p $node_folder
