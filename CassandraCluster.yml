@@ -143,7 +143,7 @@ Resources:
           - Effect: Allow
             Action:
             - s3:GetObject
-            Resource: !Sub 'arn:aws:s3:::${CassandraConfigS3Bucket}/*'
+            Resource: !Sub 'arn:aws:s3:::${CassandraConfigS3Bucket}/${AWS::StackName}/*'
           - Effect: Allow
             Action:
             - s3:ListBucket
@@ -509,7 +509,7 @@ Resources:
                 # retrieve cassandra config files
                 mkdir -p /etc/cassandra
                 chmod 755 /etc/cassandra
-                aws s3 sync s3://cassandra-configuration/ /etc/cassandra
+                aws s3 sync s3://cassandra-configuration/${AWS::StackName} /etc/cassandra
                 chown -R cassandra:cassandra /etc/cassandra
                 chmod -R 644 /etc/cassandra/*
                 
