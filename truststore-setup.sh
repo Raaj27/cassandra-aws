@@ -37,5 +37,5 @@ keytool -importkeystore -srckeystore "$KEY_STORE" -destkeystore "$PKS_KEY_STORE"
 # Note: Client will only need to use the cluster public certificate when require_client_auth: false
 openssl pkcs12 -in "$PKS_KEY_STORE" -nokeys -out "${CLUSTER_NAME}_CLIENT.cer.pem" -passin "pass:$PASSWORD"
 
-sed -i.bak -e "s/keystore_password: cassandra/keystore_password: $PASSWORD/g" cassandra-config/cassandra.yaml
+sed -e "s/keystore_password: cassandra/keystore_password: $PASSWORD/g" cassandra-config/cassandra.yaml.base > cassandra-config/cassandra.yaml
 sed -i.bak -e "s/truststore_password: cassandra/truststore_password: $PASSWORD/g" cassandra-config/cassandra.yaml

@@ -16,6 +16,6 @@
 .idea_modules/
 
 cassandra-config/conf/certs
-
+cassandra-config/cassandra.yaml
 *.pem
 *.bak
