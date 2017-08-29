@@ -10,7 +10,6 @@ TRUST_STORE="$KEY_STORE_PATH/cassandra.truststore"
 PASSWORD=$1
 CLUSTER_NAME=$2
 CLUSTER_PUBLIC_CERT="$KEY_STORE_PATH/CLUSTER_${CLUSTER_NAME}_PUBLIC.cer"
-CLIENT_PUBLIC_CERT="$KEY_STORE_PATH/CLIENT_${CLUSTER_NAME}_PUBLIC.cer"
 
 ### Cluster key setup.
 # Create the cluster key for cluster communication.
