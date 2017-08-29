@@ -51,6 +51,7 @@ keytool -importkeystore -srckeystore "$KEY_STORE" -destkeystore "$PKS_KEY_STORE"
 -srcstorepass "$PASSWORD" -deststorepass "$PASSWORD"
 
 # Exports pem file without private keys with the public certs for cluster and client
+# Note: Client will only need to use the cluster public certificate when require_client_auth: false
 openssl pkcs12 -in "$PKS_KEY_STORE" -nokeys -out "${CLUSTER_NAME}_CLIENT.cer.pem" -passin "pass:$PASSWORD"
 openssl pkcs12 -in "$PKS_KEY_STORE" -nodes -nocerts -out "${CLUSTER_NAME}_CLIENT.key.pem" -passin "pass:$PASSWORD"
 
