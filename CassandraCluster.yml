@@ -509,7 +509,9 @@ Resources:
                 # retrieve cassandra config files
                 mkdir -p /etc/cassandra
                 chmod 755 /etc/cassandra
+                echo "Downloading Cassandra configuration files from S3" >> /var/log/setup.log
                 aws s3 sync s3://cassandra-configuration/${AWS::StackName} /etc/cassandra
+                echo "Finished downloading Cassandra configuration files from S3" >> /var/log/setup.log
                 chown -R cassandra:cassandra /etc/cassandra
                 chmod -R 644 /etc/cassandra/*
                 
@@ -529,6 +531,7 @@ Resources:
                 --log-driver=awslogs --log-opt awslogs-region="${AWS::Region}" --log-opt awslogs-group="${LogGroup}" --log-opt awslogs-stream="node$NODE_ID" \
                 -e CASSANDRA_SEEDS="$SEED_IP" \
                 -e CASSANDRA_BROADCAST_ADDRESS="$NODE_ADDRESS" \
+                -e CASSANDRA_ENDPOINT_SNITCH="org.apache.cassandra.locator.Ec2Snitch" \
                 -v $node_folder:/var/lib/cassandra \
                 -v /etc/cassandra:/etc/cassandra cassandra:3.11 >> /var/log/docker                    
           commands:
