@@ -15,7 +15,7 @@ CLUSTER_PUBLIC_CERT="$KEY_STORE_PATH/CLUSTER_${CLUSTER_NAME}_PUBLIC.cer"
 # Create the cluster key for cluster communication.
 # Creates cassandra.keystore which contains private key for cluster
 keytool -genkey -keyalg RSA -alias "${CLUSTER_NAME}_CLUSTER" -keystore "$KEY_STORE" -storepass "$PASSWORD" -keypass "$PASSWORD" \
--dname "CN=LoyaltyOne Image $CLUSTER_NAME cluster, OU=LoyaltyOne, O=LoyaltyOne, L=Toronto, ST=ON, C=CA, DC=LoyaltyOne, DC=com" \
+-dname "CN=Acme Image $CLUSTER_NAME cluster, OU=Acme, O=Acme, L=Toronto, ST=ON, C=CA, DC=Acme, DC=com" \
 -validity 36500
 
 # Create the public key for the cluster which is used to identify nodes.
