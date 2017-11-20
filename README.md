@@ -67,3 +67,6 @@ $ aws s3 sync cassandra-config s3://cassandra-configuration/<clustername>
 
 **Note:** You must name the CloudFormation stack exactly the same as `<clustername>` defined above in order for 
 encryption to work correctly.
+
+For example, we have named our bucket `sandbox-cassandra-configuration` and the name of the cluster is `sandbox-cassandra`:
+![image](https://user-images.githubusercontent.com/14280155/33042220-03f05ef0-ce0f-11e7-8729-e4a9798079f2.png)
