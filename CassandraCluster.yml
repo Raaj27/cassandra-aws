@@ -236,8 +236,9 @@ Resources:
           yum install -y aws-cfn-bootstrap awslogs jq
           export AWS_DEFAULT_REGION=$(curl http://169.254.169.254/latest/meta-data/placement/availability-zone | sed s'/.$//')
           /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource InstanceLc --configsets full_install
+          status=$?
           source /etc/cassandra-info
-          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource "InstanceAsg$NODE_ID"
+          /opt/aws/bin/cfn-signal -e $status --region ${AWS::Region} --stack ${AWS::StackName} --resource "InstanceAsg$NODE_ID"
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
