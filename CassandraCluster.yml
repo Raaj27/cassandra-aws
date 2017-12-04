@@ -511,7 +511,7 @@ Resources:
                 mkdir -p /etc/cassandra
                 chmod 755 /etc/cassandra
                 echo "Downloading Cassandra configuration files from S3" >> /var/log/setup.log
-                aws s3 sync --sse s3://${CassandraConfigS3Bucket}/${AWS::StackName} /etc/cassandra
+                aws s3 sync s3://${CassandraConfigS3Bucket}/${AWS::StackName} /etc/cassandra --sse
                 echo "Finished downloading Cassandra configuration files from S3" >> /var/log/setup.log
                 chown -R cassandra:cassandra /etc/cassandra
                 chmod -R 644 /etc/cassandra/*
