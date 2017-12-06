@@ -172,20 +172,7 @@ Resources:
       Path: /
       Roles:
       - !Ref 'InstanceRole'
-
-  EIPA:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-  EIPB:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-  EIPC:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-
+      
   RecordA:
     Type: AWS::Route53::RecordSet
     Properties: 
@@ -442,27 +429,14 @@ Resources:
                 instance_id=$(curl http://169.254.169.254/latest/meta-data/instance-id)
                 tags=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$instance_id")
                 
-                EIP=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "EIP") | .Value')
-                EIP_ALLOCATION_ID=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "EIPAllocationId") | .Value')
                 SEED_IP=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "SeedIp") | .Value')
                 NODE_ID=$(echo $tags | jq --raw-output '.Tags[] | select(.Key == "NodeId") | .Value')
                 
-                echo "EIP=$EIP" >> /etc/cassandra-info
-                echo "EIP_ALLOCATION_ID=$EIP_ALLOCATION_ID" >> /etc/cassandra-info
                 echo "SEED_IP=$SEED_IP" >> /etc/cassandra-info
                 echo "NODE_ID=$NODE_ID" >> /etc/cassandra-info
                 echo "INSTANCE_ID=$instance_id" >> /etc/cassandra-info
                 echo "HOSTED_ZONE_ID=${HostedZoneId}" >> /etc/cassandra-info
                 echo "NODE_ADDRESS=node$NODE_ID.cassandra.${HostedZoneName}" >> /etc/cassandra-info
-            02_associate_eip:
-              command: !Sub |
-                #!/bin/bash
-                set -e
-                
-                source /etc/cassandra-info
-                
-                echo "Associate EIP: $EIP" >> /var/log/setup.log
-                aws ec2 associate-address --allocation-id $EIP_ALLOCATION_ID --instance-id $INSTANCE_ID --allow-reassociation >> /var/log/setup.log
             03_change_records:
               command: !Sub |
                 #!/bin/bash
@@ -511,7 +485,7 @@ Resources:
                 mkdir -p /etc/cassandra
                 chmod 755 /etc/cassandra
                 echo "Downloading Cassandra configuration files from S3" >> /var/log/setup.log
-                aws s3 sync --sse s3://${CassandraConfigS3Bucket}/${AWS::StackName} /etc/cassandra
+                aws s3 sync s3://${CassandraConfigS3Bucket}/${AWS::StackName} /etc/cassandra --sse
                 echo "Finished downloading Cassandra configuration files from S3" >> /var/log/setup.log
                 chown -R cassandra:cassandra /etc/cassandra
                 chmod -R 644 /etc/cassandra/*
@@ -559,12 +533,6 @@ Resources:
       - Key: SeedIp
         Value: !Ref 'RecordA'
         PropagateAtLaunch: 'true'
-      - Key: EIP
-        Value: !Ref 'EIPA'
-        PropagateAtLaunch: 'true'
-      - Key: EIPAllocationId
-        Value: !GetAtt EIPA.AllocationId
-        PropagateAtLaunch: 'true'
       - Key: NodeId
         Value: 'a'
         PropagateAtLaunch: 'true'
@@ -590,12 +558,6 @@ Resources:
       - Key: SeedIp
         Value: !Ref 'RecordA'
         PropagateAtLaunch: 'true'
-      - Key: EIP
-        Value: !Ref 'EIPB'
-        PropagateAtLaunch: 'true'
-      - Key: EIPAllocationId
-        Value: !GetAtt EIPB.AllocationId
-        PropagateAtLaunch: 'true'
       - Key: NodeId
         Value: 'b'
         PropagateAtLaunch: 'true'
@@ -620,12 +582,6 @@ Resources:
         PropagateAtLaunch: 'true'
       - Key: SeedIp
         Value: !Ref 'RecordA'
-        PropagateAtLaunch: 'true'
-      - Key: EIP
-        Value: !Ref 'EIPC'
-        PropagateAtLaunch: 'true'
-      - Key: EIPAllocationId
-        Value: !GetAtt EIPC.AllocationId
         PropagateAtLaunch: 'true'
       - Key: NodeId
         Value: 'c'
