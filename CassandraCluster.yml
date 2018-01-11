@@ -39,30 +39,23 @@ Parameters:
     Type: String
     Description: The name of a CloudWatch log group to send CloudFormation related logs to
     Default: 'CloudFormation'
-Mappings:
 
-    # These are the latest ECS optimized AMIs as of June 2017:
+Mappings:
+    # These are the latest ECS optimized AMIs as of JAN 2018:
     #
-    #   amzn-ami-2017.03.e-amazon-ecs-optimized
-    #   ECS agent:    1.14.3
-    #   Docker:       17.03.1-ce
-    #   ecs-init:     1.14.3-1
+    #   (amzn-ami-2017.09.e-amazon-ecs-optimized)
+    #   ECS agent:    1.16.1
+    #   Docker:       17.06.2-ce
+    #   ecs-init:     1.16.1-1
     #
     # You can find the latest available on this page of our documentation:
     # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html
     # (note the AMI identifier is region specific)
-
     AWSRegionToAMI:
-        us-east-1:
-            AMI: ami-d61027ad
-        us-east-2:
-            AMI: ami-bb8eaede
-        us-west-1:
-            AMI: ami-514e6431
-        us-west-2:
-            AMI: ami-c6f81abe
-        ca-central-1:
-            AMI: ami-32bb0556
+      us-east-1:
+        AMI: ami-13401669
+      ca-central-1:
+        AMI: ami-e8cb4e8c
 
 Resources:
   # Security Groups
